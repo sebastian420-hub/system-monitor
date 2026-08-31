@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --bg: #1e1e1e;
+      --panel: #282828;
+      --text: #ececec;
+      --accent: #0A84FF;
+      --border: #3e3e42;
+    }
+    body {
+      margin: 0; padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: transparent; color: var(--text); overflow: hidden;
+    }
+    .container {
+      height: 100vh; display: flex; flex-direction: column;
+      background: var(--bg); border: 1px solid #555;
+      border-radius: 10px; box-sizing: border-box; box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      padding: 15px;
+    }
+    .title { font-weight: 600; font-size: 14px; margin-bottom: 15px; text-align: center; color: #aaa;}
+    
+    .stat-box {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 8px; padding: 15px; margin-bottom: 15px;
+    }
+    .stat-header {
+      display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 8px;
+    }
+    
+    .bar-bg { width: 100%; height: 8px; background: #444; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease-out, background 0.3s; }
+    
+    .details { font-size: 10px; color: #888; margin-top: 8px; display: flex; justify-content: space-between;}
+    .details span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    
+    .cpu-fill { background: #32d74b; }
+    .gpu-fill { background: #bf5af2; }
+    
+    .toggle-container {
+      display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;
+    }
+    .toggle-btn {
+      background: #333; color: #aaa; border: 1px solid #555; padding: 4px 12px;
+      border-radius: 12px; font-size: 11px; cursor: pointer; transition: 0.2s;
+    }
+    .toggle-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title" style="margin-bottom: 10px;">System Monitor</div>
+    
+    <div class="toggle-container">
+      <span style="font-size: 11px; color:#888; margin-top:3px;">Menu Bar:</span>
+      <button id="btnCpu" class="toggle-btn active" onclick="setMode('CPU')">CPU</button>
+      <button id="btnGpu" class="toggle-btn" onclick="setMode('GPU')">GPU</button>
+      <button id="btnRam" class="toggle-btn" onclick="setMode('RAM')">RAM</button>
+    </div>
+    
+    <div class="stat-box">
+      <div class="stat-header">
+        <span>CPU Usage</span>
+        <span id="cpuText">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill cpu-fill" id="cpuBar"></div></div>
+      <div class="details">
+        <span id="cpuModel">Loading CPU info...</span>
+      </div>
+    </div>
+    
+    <div class="stat-box">
+      <div class="stat-header">
+        <span>GPU Usage</span>
+        <span id="gpuText">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill gpu-fill" id="gpuBar"></div></div>
+      <div class="details">
+        <span id="gpuModel">Apple Silicon GPU</span>
+      </div>
+    </div>
+    
+    <div class="stat-box">
+      <div class="stat-header">
+        <span>Memory (RAM)</span>
+        <span id="memText">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fill mem-fill" id="memBar"></div></div>
+      <div class="details">
+        <span id="memUsed">Used: 0 GB</span>
+        <span id="memTotal">Total: 0 GB</span>
+      </div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+        <span>System Info</span>
+      </div>
+      <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px; color: #aaa;">
+        <div><div style="color:#666; font-size:9px;">CORES</div><div id="infoCores">0</div></div>
+        <div><div style="color:#666; font-size:9px;">UPTIME</div><div id="infoUptime">0h 0m</div></div>
+        <div><div style="color:#666; font-size:9px;">IP ADDRESS</div><div id="infoIp">0.0.0.0</div></div>
+        <div><div style="color:#666; font-size:9px;">OS VERSION</div><div id="infoOs">macOS</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const os = require('os');
+    
+    // Set Mode function
+    function setMode(mode) {
+      document.getElementById('btnCpu').classList.remove('active');
+      document.getElementById('btnGpu').classList.remove('active');
+      document.getElementById('btnRam').classList.remove('active');
+      
+      if (mode === 'CPU') document.getElementById('btnCpu').classList.add('active');
+      else if (mode === 'GPU') document.getElementById('btnGpu').classList.add('active');
+      else document.getElementById('btnRam').classList.add('active');
+      
+      ipcRenderer.send('set-display-mode', mode);
+    }
+    
+    // Get hardware CPU model name
+    const cores = os.cpus().length;
+    document.getElementById('cpuModel').textContent = `${os.cpus()[0].model.trim()}`;
+    document.getElementById('infoCores').textContent = `${cores} Cores`;
+    
+    function formatUptime(seconds) {
+      const d = Math.floor(seconds / (3600*24));
+      const h = Math.floor(seconds % (3600*24) / 3600);
+      const m = Math.floor(seconds % 3600 / 60);
+      if (d > 0) return `${d}d ${h}h ${m}m`;
+      return `${h}h ${m}m`;
+    }
+
+    ipcRenderer.on('stats-update', (event, data) => {
+      // Update CPU
+      const cpu = data.cpu.toFixed(1);
+      document.getElementById('cpuText').textContent = `${cpu}%`;
+      document.getElementById('cpuBar').style.width = `${cpu}%`;
+      
+      // Dynamic color based on CPU load
+      const cpuBar = document.getElementById('cpuBar');
+      if (cpu > 80) cpuBar.style.background = '#ff453a'; // Red
+      else if (cpu > 50) cpuBar.style.background = '#ffd60a'; // Yellow
+      else cpuBar.style.background = '#32d74b'; // Green
+
+      // Update GPU
+      const gpu = data.gpu || 0;
+      document.getElementById('gpuText').textContent = `${gpu}%`;
+      document.getElementById('gpuBar').style.width = `${gpu}%`;
+      
+      const gpuBar = document.getElementById('gpuBar');
+      if (gpu > 80) gpuBar.style.background = '#ff453a';
+      else if (gpu > 50) gpuBar.style.background = '#ffd60a';
+      else gpuBar.style.background = '#bf5af2';
+
+      // Update RAM
+      const memPercent = data.memPercent.toFixed(1);
+      document.getElementById('memText').textContent = `${memPercent}%`;
+      document.getElementById('memBar').style.width = `${memPercent}%`;
+      
+      document.getElementById('memUsed').textContent = `Used: ${(data.usedMemMb / 1024).toFixed(2)} GB`;
+      document.getElementById('memTotal').textContent = `Total: ${(data.totalMemMb / 1024).toFixed(2)} GB`;
+      
+      // Update System Info
+      document.getElementById('infoUptime').textContent = formatUptime(data.uptime);
+      document.getElementById('infoIp').textContent = data.ip;
+      document.getElementById('infoOs').textContent = data.os;
+    });
+  </script>
+</body>
+</html>

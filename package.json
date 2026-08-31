@@ -1,0 +1,21 @@
+{
+  "name": "system-monitor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "electron": "^44.1.0",
+    "electron-builder": "^26.15.3",
+    "node-os-utils": "^2.0.4"
+  },
+  "dependencies": {
+    "systeminformation": "^5.33.6"
+  }
+}
