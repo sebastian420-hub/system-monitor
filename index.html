@@ -79,7 +79,7 @@
       </div>
       <div class="bar-bg"><div class="bar-fill gpu-fill" id="gpuBar"></div></div>
       <div class="details">
-        <span id="gpuModel">Apple Silicon GPU</span>
+        <span id="gpuModel">Loading GPU info...</span>
       </div>
     </div>
     
@@ -90,7 +90,8 @@
       </div>
       <div class="bar-bg"><div class="bar-fill mem-fill" id="memBar"></div></div>
       <div class="details">
-        <span id="memUsed">Used: 0 GB</span>
+        <span id="memUsed">Active: 0 GB</span>
+        <span id="memSwap">Swap: 0 GB</span>
         <span id="memTotal">Total: 0 GB</span>
       </div>
     </div>
@@ -154,6 +155,10 @@
       document.getElementById('gpuText').textContent = `${gpu}%`;
       document.getElementById('gpuBar').style.width = `${gpu}%`;
       
+      if (data.gpuModel) {
+        document.getElementById('gpuModel').textContent = data.gpuModel;
+      }
+      
       const gpuBar = document.getElementById('gpuBar');
       if (gpu > 80) gpuBar.style.background = '#ff453a';
       else if (gpu > 50) gpuBar.style.background = '#ffd60a';
@@ -164,7 +169,10 @@
       document.getElementById('memText').textContent = `${memPercent}%`;
       document.getElementById('memBar').style.width = `${memPercent}%`;
       
-      document.getElementById('memUsed').textContent = `Used: ${(data.usedMemMb / 1024).toFixed(2)} GB`;
+      document.getElementById('memUsed').textContent = `Active: ${(data.usedMemMb / 1024).toFixed(2)} GB`;
+      if (data.swapUsedMb !== undefined) {
+        document.getElementById('memSwap').textContent = `Swap: ${(data.swapUsedMb / 1024).toFixed(2)} GB`;
+      }
       document.getElementById('memTotal').textContent = `Total: ${(data.totalMemMb / 1024).toFixed(2)} GB`;
       
       // Update System Info

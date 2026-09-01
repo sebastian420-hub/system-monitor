@@ -1,6 +1,7 @@
 const { app, BrowserWindow, Tray, ipcMain } = require('electron');
 const path = require('path');
 const os = require('os');
+const si = require('systeminformation');
 
 let tray = null;
 let window = null;
@@ -97,8 +98,16 @@ ipcMain.on('set-display-mode', (event, mode) => {
   displayMode = mode;
 });
 
+let gpuModelName = 'Unknown GPU';
+si.graphics().then(data => {
+  if (data.controllers && data.controllers.length > 0) {
+    gpuModelName = data.controllers[0].model;
+  }
+}).catch(console.error);
+
 function getGpuUsage() {
   return new Promise((resolve) => {
+    if (os.platform() !== 'darwin') return resolve(0); // ioreg is macOS only
     exec('ioreg -l | grep "Device Utilization %"', (err, stdout) => {
       if (err || !stdout) return resolve(currentGpuUsage);
       const match = stdout.match(/"Device Utilization %"=(\d+)/);
@@ -116,27 +125,27 @@ function startMonitoring() {
       const cpuUsage = getCpuUsage();
       const gpuUsage = await getGpuUsage();
       
+      const memData = await si.mem();
+      const memPercent = (memData.active / memData.total) * 100;
+      
       if (displayMode === 'CPU') {
         tray.setTitle(`CPU ${Math.round(cpuUsage)}%`);
       } else if (displayMode === 'GPU') {
         tray.setTitle(`GPU ${gpuUsage}%`);
       } else if (displayMode === 'RAM') {
-        const memPercent = ((os.totalmem() - os.freemem()) / os.totalmem()) * 100;
         tray.setTitle(`RAM ${Math.round(memPercent)}%`);
       }
 
       if (window && window.isVisible()) {
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const usedMem = totalMem - freeMem;
-        const memPercent = (usedMem / totalMem) * 100;
-        
         window.webContents.send('stats-update', {
           cpu: cpuUsage,
           gpu: gpuUsage,
+          gpuModel: gpuModelName,
           memPercent: memPercent,
-          usedMemMb: usedMem / 1024 / 1024,
-          totalMemMb: totalMem / 1024 / 1024,
+          usedMemMb: memData.active / 1024 / 1024,
+          totalMemMb: memData.total / 1024 / 1024,
+          swapUsedMb: memData.swapused / 1024 / 1024,
+          swapTotalMb: memData.swaptotal / 1024 / 1024,
           uptime: os.uptime(),
           ip: getLocalIp(),
           os: `${os.type()} ${os.release()}`
