@@ -2,183 +2,146 @@
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
   <style>
     :root {
-      --bg: #1e1e1e;
-      --panel: #282828;
-      --text: #ececec;
-      --accent: #0A84FF;
-      --border: #3e3e42;
+      --bg: #1e1e1e; --panel: #282828; --text: #ececec; --muted: #888; --dim: #666;
+      --track: #444; --border: #3e3e42; --btn: #333;
+      --accent: #0A84FF; --cpu: #32d74b; --gpu: #bf5af2; --ram: #0A84FF;
+      --warn: #ffd60a; --hot: #ff453a;
     }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f5f5f7; --panel: #fff; --text: #1d1d1f; --muted: #6e6e73; --dim: #8e8e93;
+        --track: #e0e0e5; --border: #d2d2d7; --btn: #ececf0;
+      }
+    }
+    * { box-sizing: border-box; }
     body {
-      margin: 0; padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: transparent; color: var(--text); overflow: hidden;
+      margin: 0; overflow: hidden; background: transparent; color: var(--text);
+      font: 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      user-select: none; -webkit-user-select: none;
     }
     .container {
-      height: 100vh; display: flex; flex-direction: column;
-      background: var(--bg); border: 1px solid #555;
-      border-radius: 10px; box-sizing: border-box; box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-      padding: 15px;
+      height: 100vh; padding: 12px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 10px;
+      display: flex; flex-direction: column; gap: 8px;
     }
-    .title { font-weight: 600; font-size: 14px; margin-bottom: 15px; text-align: center; color: #aaa;}
-    
-    .stat-box {
-      background: var(--panel); border: 1px solid var(--border);
-      border-radius: 8px; padding: 15px; margin-bottom: 15px;
+    .title { font-weight: 600; font-size: 13px; text-align: center; color: var(--muted); }
+    .modes { display: flex; justify-content: center; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; }
+    .modes button {
+      background: var(--btn); color: var(--muted); border: 1px solid var(--border);
+      padding: 3px 10px; border-radius: 12px; font-size: 11px; cursor: pointer;
     }
-    .stat-header {
-      display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 8px;
+    .modes button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    .box { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+    .head { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; }
+    .bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+    .bar i {
+      display: block; height: 100%; width: 100%; background: var(--c);
+      transform: scaleX(0); transform-origin: left; transition: transform .4s ease-out;
     }
-    
-    .bar-bg { width: 100%; height: 8px; background: #444; border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s ease-out, background 0.3s; }
-    
-    .details { font-size: 10px; color: #888; margin-top: 8px; display: flex; justify-content: space-between;}
-    .details span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    
-    .cpu-fill { background: #32d74b; }
-    .gpu-fill { background: #bf5af2; }
-    
-    .toggle-container {
-      display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;
-    }
-    .toggle-btn {
-      background: #333; color: #aaa; border: 1px solid #555; padding: 4px 12px;
-      border-radius: 12px; font-size: 11px; cursor: pointer; transition: 0.2s;
-    }
-    .toggle-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+    .bar.warn i { background: var(--warn); }
+    .bar.hot i { background: var(--hot); }
+    .sub { display: flex; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 10px; color: var(--muted); }
+    .sub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; color: var(--muted); }
+    .grid small { display: block; font-size: 9px; color: var(--dim); }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="title" style="margin-bottom: 10px;">System Monitor</div>
-    
-    <div class="toggle-container">
-      <span style="font-size: 11px; color:#888; margin-top:3px;">Menu Bar:</span>
-      <button id="btnCpu" class="toggle-btn active" onclick="setMode('CPU')">CPU</button>
-      <button id="btnGpu" class="toggle-btn" onclick="setMode('GPU')">GPU</button>
-      <button id="btnRam" class="toggle-btn" onclick="setMode('RAM')">RAM</button>
+    <div class="title">System Monitor</div>
+    <div class="modes">
+      Menu Bar:
+      <button data-mode="CPU">CPU</button>
+      <button data-mode="GPU">GPU</button>
+      <button data-mode="RAM">RAM</button>
     </div>
-    
-    <div class="stat-box">
-      <div class="stat-header">
-        <span>CPU Usage</span>
-        <span id="cpuText">0%</span>
-      </div>
-      <div class="bar-bg"><div class="bar-fill cpu-fill" id="cpuBar"></div></div>
-      <div class="details">
-        <span id="cpuModel">Loading CPU info...</span>
-      </div>
+
+    <div class="box">
+      <div class="head"><span>CPU</span><span id="cpuText">--</span></div>
+      <div class="bar" id="cpuBar" style="--c:var(--cpu)"><i></i></div>
+      <div class="sub"><span id="cpuModel">Loading…</span></div>
     </div>
-    
-    <div class="stat-box">
-      <div class="stat-header">
-        <span>GPU Usage</span>
-        <span id="gpuText">0%</span>
-      </div>
-      <div class="bar-bg"><div class="bar-fill gpu-fill" id="gpuBar"></div></div>
-      <div class="details">
-        <span id="gpuModel">Loading GPU info...</span>
-      </div>
+
+    <div class="box">
+      <div class="head"><span>GPU</span><span id="gpuText">--</span></div>
+      <div class="bar" id="gpuBar" style="--c:var(--gpu)"><i></i></div>
+      <div class="sub"><span id="gpuModel">Loading…</span></div>
     </div>
-    
-    <div class="stat-box">
-      <div class="stat-header">
-        <span>Memory (RAM)</span>
-        <span id="memText">0%</span>
-      </div>
-      <div class="bar-bg"><div class="bar-fill mem-fill" id="memBar"></div></div>
-      <div class="details">
-        <span id="memUsed">Active: 0 GB</span>
-        <span id="memSwap">Swap: 0 GB</span>
-        <span id="memTotal">Total: 0 GB</span>
-      </div>
+
+    <div class="box">
+      <div class="head"><span>Memory</span><span id="memText">--</span></div>
+      <div class="bar" id="memBar" style="--c:var(--ram)"><i></i></div>
+      <div class="sub"><span id="memUsed">Used --</span><span id="memSwap"></span><span id="memTotal">Total --</span></div>
     </div>
-    <div class="stat-box">
-      <div class="stat-header" style="margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
-        <span>System Info</span>
-      </div>
-      <div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 11px; color: #aaa;">
-        <div><div style="color:#666; font-size:9px;">CORES</div><div id="infoCores">0</div></div>
-        <div><div style="color:#666; font-size:9px;">UPTIME</div><div id="infoUptime">0h 0m</div></div>
-        <div><div style="color:#666; font-size:9px;">IP ADDRESS</div><div id="infoIp">0.0.0.0</div></div>
-        <div><div style="color:#666; font-size:9px;">OS VERSION</div><div id="infoOs">macOS</div></div>
-      </div>
+
+    <div class="box grid">
+      <div><small>CORES</small><span id="infoCores">--</span></div>
+      <div><small>UPTIME</small><span id="infoUptime">--</span></div>
+      <div><small>IP ADDRESS</small><span id="infoIp">--</span></div>
+      <div><small>OS</small><span id="infoOs">--</span></div>
     </div>
   </div>
 
   <script>
-    const { ipcRenderer } = require('electron');
-    const os = require('os');
-    
-    // Set Mode function
-    function setMode(mode) {
-      document.getElementById('btnCpu').classList.remove('active');
-      document.getElementById('btnGpu').classList.remove('active');
-      document.getElementById('btnRam').classList.remove('active');
-      
-      if (mode === 'CPU') document.getElementById('btnCpu').classList.add('active');
-      else if (mode === 'GPU') document.getElementById('btnGpu').classList.add('active');
-      else document.getElementById('btnRam').classList.add('active');
-      
-      ipcRenderer.send('set-display-mode', mode);
-    }
-    
-    // Get hardware CPU model name
-    const cores = os.cpus().length;
-    document.getElementById('cpuModel').textContent = `${os.cpus()[0].model.trim()}`;
-    document.getElementById('infoCores').textContent = `${cores} Cores`;
-    
-    function formatUptime(seconds) {
-      const d = Math.floor(seconds / (3600*24));
-      const h = Math.floor(seconds % (3600*24) / 3600);
-      const m = Math.floor(seconds % 3600 / 60);
-      if (d > 0) return `${d}d ${h}h ${m}m`;
-      return `${h}h ${m}m`;
+    const $ = (id) => document.getElementById(id);
+    const shown = {}; // last value written per element, to skip no-op DOM writes
+
+    function text(id, value) {
+      if (shown[id] !== value) { shown[id] = value; $(id).textContent = value; }
     }
 
-    ipcRenderer.on('stats-update', (event, data) => {
-      // Update CPU
-      const cpu = data.cpu.toFixed(1);
-      document.getElementById('cpuText').textContent = `${cpu}%`;
-      document.getElementById('cpuBar').style.width = `${cpu}%`;
-      
-      // Dynamic color based on CPU load
-      const cpuBar = document.getElementById('cpuBar');
-      if (cpu > 80) cpuBar.style.background = '#ff453a'; // Red
-      else if (cpu > 50) cpuBar.style.background = '#ffd60a'; // Yellow
-      else cpuBar.style.background = '#32d74b'; // Green
+    function bar(id, pct) {
+      const v = Math.min(100, Math.max(0, pct || 0));
+      $(id).firstChild.style.transform = `scaleX(${v / 100})`;
+      const level = v > 80 ? 'bar hot' : v > 50 ? 'bar warn' : 'bar';
+      if ($(id).className !== level) $(id).className = level;
+    }
 
-      // Update GPU
-      const gpu = data.gpu || 0;
-      document.getElementById('gpuText').textContent = `${gpu}%`;
-      document.getElementById('gpuBar').style.width = `${gpu}%`;
-      
-      if (data.gpuModel) {
-        document.getElementById('gpuModel').textContent = data.gpuModel;
-      }
-      
-      const gpuBar = document.getElementById('gpuBar');
-      if (gpu > 80) gpuBar.style.background = '#ff453a';
-      else if (gpu > 50) gpuBar.style.background = '#ffd60a';
-      else gpuBar.style.background = '#bf5af2';
+    function setActive(mode) {
+      document.querySelectorAll('.modes button').forEach((b) => {
+        b.classList.toggle('active', b.dataset.mode === mode);
+      });
+    }
 
-      // Update RAM
-      const memPercent = data.memPercent.toFixed(1);
-      document.getElementById('memText').textContent = `${memPercent}%`;
-      document.getElementById('memBar').style.width = `${memPercent}%`;
-      
-      document.getElementById('memUsed').textContent = `Active: ${(data.usedMemMb / 1024).toFixed(2)} GB`;
-      if (data.swapUsedMb !== undefined) {
-        document.getElementById('memSwap').textContent = `Swap: ${(data.swapUsedMb / 1024).toFixed(2)} GB`;
+    document.querySelector('.modes').addEventListener('click', (e) => {
+      const mode = e.target.dataset && e.target.dataset.mode;
+      if (!mode) return;
+      setActive(mode);
+      window.monitor.setMode(mode);
+    });
+
+    window.monitor.getStatic().then((s) => {
+      setActive(s.mode);
+      text('cpuModel', s.cpuModel);
+      text('infoCores', `${s.cores}`);
+      text('infoOs', s.os);
+      text('gpuModel', s.gpuModel || (s.gpuSupported ? 'Unknown GPU' : 'Not available on this OS'));
+      if (!s.gpuSupported) text('gpuText', 'N/A');
+      window.__gpuSupported = s.gpuSupported;
+    });
+
+    window.monitor.onStats((d) => {
+      text('cpuText', `${d.cpu.toFixed(1)}%`);
+      bar('cpuBar', d.cpu);
+
+      if (window.__gpuSupported !== false && d.gpu != null) {
+        text('gpuText', `${d.gpu}%`);
+        bar('gpuBar', d.gpu);
       }
-      document.getElementById('memTotal').textContent = `Total: ${(data.totalMemMb / 1024).toFixed(2)} GB`;
-      
-      // Update System Info
-      document.getElementById('infoUptime').textContent = formatUptime(data.uptime);
-      document.getElementById('infoIp').textContent = data.ip;
-      document.getElementById('infoOs').textContent = data.os;
+
+      text('memText', `${d.mem.toFixed(1)}%`);
+      bar('memBar', d.mem);
+      text('memUsed', `Used ${d.memUsed}`);
+      text('memSwap', d.swap ? `Swap ${d.swap}` : '');
+      text('memTotal', `Total ${d.memTotal}`);
+
+      text('infoUptime', d.uptime);
+      text('infoIp', d.ip);
     });
   </script>
 </body>

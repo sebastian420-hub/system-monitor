@@ -1,21 +1,27 @@
 {
   "name": "system-monitor",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.1.0",
+  "description": "Low-power menu bar monitor for CPU, GPU and RAM usage",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder"
   },
-  "keywords": [],
-  "author": "",
   "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "electron": "^44.1.0",
-    "electron-builder": "^26.15.3",
-    "node-os-utils": "^2.0.4"
+    "electron-builder": "^26.15.3"
   },
-  "dependencies": {
-    "systeminformation": "^5.33.6"
+  "build": {
+    "appId": "com.sebastian420.systemmonitor",
+    "productName": "System Monitor",
+    "asar": true,
+    "files": ["main.js", "preload.js", "index.html", "lib/**"],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"],
+      "extendInfo": { "LSUIElement": true }
+    }
   }
 }
